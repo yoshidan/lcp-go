@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc"
+	"math"
 	"time"
 
 	"github.com/avast/retry-go"
@@ -323,7 +325,7 @@ func (pr *Prover) updateELC(elcClientID string, includeState bool) ([]*elc.MsgUp
 			Header:       anyHeader,
 			IncludeState: includeState,
 			Signer:       pr.activeEnclaveKey.EnclaveKeyAddress,
-		})
+		}, grpc.MaxCallSendMsgSize(math.MaxUint64))
 		if err != nil {
 			return nil, err
 		}
