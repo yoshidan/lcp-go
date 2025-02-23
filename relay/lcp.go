@@ -325,7 +325,7 @@ func (pr *Prover) updateELC(elcClientID string, includeState bool) ([]*elc.MsgUp
 			Header:       anyHeader,
 			IncludeState: includeState,
 			Signer:       pr.activeEnclaveKey.EnclaveKeyAddress,
-		}, grpc.MaxCallSendMsgSize(math.MaxUint64))
+		}, grpc.MaxCallSendMsgSize(math.MaxInt))
 		if err != nil {
 			return nil, err
 		}
