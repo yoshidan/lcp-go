@@ -341,6 +341,11 @@ func (pr *Prover) updateELC(elcClientID string, includeState bool) ([]*elc.MsgUp
 				return nil, err
 			}
 		}
+		res, err := stream.CloseAndRecv()
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, res)
 	}
 
 	return responses, nil
