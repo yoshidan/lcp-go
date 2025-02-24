@@ -8,8 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"google.golang.org/grpc"
-	"math"
+	"github.com/cosmos/cosmos-sdk/codec/types"
 	"time"
 
 	"github.com/avast/retry-go"
@@ -314,25 +313,51 @@ func (pr *Prover) updateELC(elcClientID string, includeState bool) ([]*elc.MsgUp
 	}
 
 	// 3. send a request that contains a header from 2 to update the client in ELC
+
+	// 3. send a request that contains a header from 2 to update the client in ELC
 	var responses []*elc.MsgUpdateClientResponse
 	for _, header := range headers {
 		anyHeader, err := clienttypes.PackClientMessage(header)
 		if err != nil {
 			return nil, err
 		}
-		res, err := pr.lcpServiceClient.UpdateClient(context.TODO(), &elc.MsgUpdateClient{
-			ClientId:     elcClientID,
-			Header:       anyHeader,
-			IncludeState: includeState,
-			Signer:       pr.activeEnclaveKey.EnclaveKeyAddress,
-		}, grpc.MaxCallSendMsgSize(math.MaxInt))
+		stream, err := pr.lcpServiceClient.UpdateClientStream(context.TODO())
 		if err != nil {
 			return nil, err
 		}
-		responses = append(responses, res)
+		chunks := split(anyHeader.Value, 3*1024*1024)
+		for i, chunk := range chunks {
+			err := stream.Send(&elc.MsgUpdateClient{
+				ClientId: elcClientID,
+				Header: &types.Any{
+					TypeUrl: anyHeader.TypeUrl,
+					Value:   chunk,
+				},
+				IncludeState: includeState,
+				Signer:       pr.activeEnclaveKey.EnclaveKeyAddress,
+			})
+			if err != nil {
+				pr.getLogger().Error(fmt.Sprintf("chunk failed: index = %d", i), err)
+				return nil, err
+			}
+		}
 	}
 
 	return responses, nil
+
+}
+
+func split(buf []byte, lim int) [][]byte {
+	var chunk []byte
+	chunks := make([][]byte, 0, len(buf)/lim+1)
+	for len(buf) >= lim {
+		chunk, buf = buf[:lim], buf[lim:]
+		chunks = append(chunks, chunk)
+	}
+	if len(buf) > 0 {
+		chunks = append(chunks, buf[:len(buf)])
+	}
+	return chunks
 }
 
 func (pr *Prover) registerEnclaveKey(counterparty core.Chain, eki *enclave.EnclaveKeyInfo) (core.MsgID, error) {
