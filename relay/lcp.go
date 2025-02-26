@@ -321,7 +321,7 @@ func (pr *Prover) updateELC(elcClientID string, includeState bool) ([]*elc.MsgUp
 		if err != nil {
 			return nil, err
 		}
-		stream, err := pr.lcpServiceClient.UpdateClientStream(context.TODO())
+		stream, err := pr.lcpServiceClient.StreamingUpdateClient(context.TODO())
 		if err != nil {
 			return nil, err
 		}
