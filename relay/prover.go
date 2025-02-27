@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/codec/types"
 	"os"
 	"time"
 
@@ -171,15 +172,29 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.FinalityAwareChain, latest
 		if err != nil {
 			return nil, fmt.Errorf("failed to pack header: i=%v header=%v %w", i, h, err)
 		}
-		m := elc.MsgUpdateClient{
-			ClientId:     pr.config.ElcClientId,
-			Header:       anyHeader,
-			IncludeState: false,
-			Signer:       pr.activeEnclaveKey.EnclaveKeyAddress,
-		}
-		res, err := pr.lcpServiceClient.UpdateClient(context.TODO(), &m)
+		stream, err := pr.lcpServiceClient.StreamingUpdateClient(context.TODO())
 		if err != nil {
-			return nil, fmt.Errorf("failed to update ELC: i=%v elc_client_id=%v msg=%v %w", i, pr.config.ElcClientId, m, err)
+			return nil, err
+		}
+		chunks := split(anyHeader.Value, 3*1024*1024)
+		for _, chunk := range chunks {
+			err = stream.Send(&elc.MsgUpdateClient{
+				ClientId: pr.config.ElcClientId,
+				Header: &types.Any{
+					TypeUrl: anyHeader.TypeUrl,
+					Value:   chunk,
+				},
+				IncludeState: false,
+				Signer:       pr.activeEnclaveKey.EnclaveKeyAddress,
+			})
+			if err != nil {
+				pr.getLogger().Error(fmt.Sprintf("chunk failed: index = %d", i), err)
+				return nil, err
+			}
+		}
+		res, err := stream.CloseAndRecv()
+		if err != nil {
+			return nil, fmt.Errorf("failed to update ELC: i=%v elc_client_id=%v %w", i, pr.config.ElcClientId, err)
 		}
 		// ensure the message is valid
 		if _, err := lcptypes.EthABIDecodeHeaderedProxyMessage(res.Message); err != nil {
