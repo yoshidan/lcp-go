@@ -9,10 +9,12 @@ import (
 )
 
 func updateClient(ctx context.Context, client LCPServiceClient, anyHeader *types.Any, elcClientID string, includeState bool, signer []byte) (*elc.MsgUpdateClientResponse, error) {
+	log.GetLogger().Info("UpdateClientStream1", "clientID", elcClientID, "includeState", includeState)
 	stream, err := client.UpdateClientStream(ctx)
 	if err != nil {
 		return nil, err
 	}
+	log.GetLogger().Info("UpdateClientStream2", "clientID", elcClientID, "includeState", includeState)
 	if err = stream.Send(&elc.MsgUpdateClientStreamChunk{
 		Chunk: &elc.MsgUpdateClientStreamChunk_Init{
 			Init: &elc.UpdateClientStreamInit{
@@ -25,6 +27,7 @@ func updateClient(ctx context.Context, client LCPServiceClient, anyHeader *types
 	}); err != nil {
 		return nil, err
 	}
+	log.GetLogger().Info("UpdateClientStream3", "clientID", elcClientID, "includeState", includeState)
 	chunks := split(anyHeader.Value, 3*1024*1024)
 	for i, chunk := range chunks {
 		err = stream.Send(&elc.MsgUpdateClientStreamChunk{
@@ -38,7 +41,9 @@ func updateClient(ctx context.Context, client LCPServiceClient, anyHeader *types
 			log.GetLogger().Error(fmt.Sprintf("chunk failed: index = %d", i), err)
 			return nil, err
 		}
+		log.GetLogger().Info("UpdateClientStream4", "clientID", elcClientID, "includeState", includeState)
 	}
+	log.GetLogger().Info("UpdateClientStream5", "clientID", elcClientID, "includeState", includeState)
 	return stream.CloseAndRecv()
 }
 
