@@ -85,6 +85,14 @@ func (pc ProverConfig) ChainType() lcptypes.ChainType {
 	}
 }
 
+func (pc ProverConfig) GetMaxChunkSizeForUpdateClient() uint32 {
+	if pc.MaxChunkSizeForUpdateClient == 0 {
+		const defaultChunkSize = 4*1024*1024 - 1024
+		return defaultChunkSize
+	}
+	return pc.MaxChunkSizeForUpdateClient
+}
+
 func (pc ProverConfig) Validate() error {
 	// origin prover config validation
 	if err := pc.OriginProver.GetCachedValue().(core.ProverConfig).Validate(); err != nil {
