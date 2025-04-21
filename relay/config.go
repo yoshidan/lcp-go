@@ -87,7 +87,7 @@ func (pc ProverConfig) ChainType() lcptypes.ChainType {
 
 func (pc ProverConfig) GetMaxChunkSizeForUpdateClient() uint32 {
 	if pc.MaxChunkSizeForUpdateClient == 0 {
-		const defaultChunkSize = 4*1024*1024 - 1024
+		const defaultChunkSize = 4 * 1024 * 1024
 		return defaultChunkSize
 	}
 	return pc.MaxChunkSizeForUpdateClient
